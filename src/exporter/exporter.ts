@@ -8,6 +8,7 @@ import {
 import { base64ToBytes } from "../lib/base64";
 import { conversationSlug } from "../lib/naming";
 import { buildPage } from "../lib/page";
+import { buildExportReport } from "../lib/report";
 import type { Capture, ContentMessage, ZipEntry } from "../lib/types";
 import { buildZip } from "../lib/zip";
 
@@ -298,6 +299,7 @@ async function run(): Promise<void> {
     ui.setState("capture", "active");
     ui.progress(0.1);
     const capture = await runCapture(port, ui, trustedScroller);
+    const trustedScrollWorked = trustedScroller.isAttached;
     await trustedScroller.detach();
     await focusSelf();
     ui.setState(
@@ -326,9 +328,20 @@ async function run(): Promise<void> {
       fontFiles: fetched.fontFiles,
     });
     const folder = conversationSlug(capture.title, capture.conversationId);
+    const report = buildExportReport({
+      capture,
+      exportedAt: new Date().toISOString(),
+      trustedScrollUsed: trustedScrollWorked,
+      remoteAssetCount: fetched.entries.length - fetched.fontFiles.length,
+      fontCount: fetched.fontFiles.length,
+    });
     const zip = buildZip(
       [
         { name: "index.html", data: new TextEncoder().encode(page) },
+        {
+          name: "export-report.json",
+          data: new TextEncoder().encode(JSON.stringify(report, null, 2)),
+        },
         ...fetched.entries,
         ...media.entries,
       ].map((entry) => ({ ...entry, name: `${folder}/${entry.name}` })),
