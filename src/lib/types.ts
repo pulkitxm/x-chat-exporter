@@ -39,5 +39,3 @@ export type ContentMessage =
   | { kind: "status"; status: CaptureStatus }
   | { kind: "capture-chunk"; index: number; total: number; payload: string }
   | { kind: "error"; message: string };
-
-export type ExporterCommand = { kind: "start" };

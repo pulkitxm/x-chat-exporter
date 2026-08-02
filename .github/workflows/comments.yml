@@ -1,0 +1,31 @@
+name: Comments
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: comments-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  policy:
+    name: No-comment policy
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup
+      - name: Comment stripper self-test
+        run: bun test scripts/
+      - name: No comments in tracked source
+        run: bun run check-comments
+      - name: No prohibited dash characters
+        run: bun run check-em-dashes

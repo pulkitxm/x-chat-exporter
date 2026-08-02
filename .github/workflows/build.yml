@@ -1,0 +1,53 @@
+name: Build
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Extension bundle
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: ./.github/actions/setup
+
+      - name: Build the extension
+        run: bun run build
+
+      - name: The bundle must contain every extension artifact
+        run: |
+          for artifact in manifest.json background.js content.js exporter.js exporter.html icons/icon16.png icons/icon48.png icons/icon128.png; do
+            test -s "dist/$artifact" || { echo "missing dist/$artifact"; exit 1; }
+          done
+          echo "all extension artifacts present"
+
+      - name: The manifest must be valid JSON with matching entry points
+        run: |
+          bun -e '
+            const manifest = await Bun.file("dist/manifest.json").json();
+            const missing = [];
+            if (manifest.background.service_worker !== "background.js") missing.push("background");
+            if (manifest.manifest_version !== 3) missing.push("manifest_version");
+            if (missing.length > 0) { console.error("manifest problems:", missing); process.exit(1); }
+            console.log("manifest is coherent");
+          '
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: extension
+          path: dist/
+          retention-days: 14
