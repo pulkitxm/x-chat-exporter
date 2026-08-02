@@ -51,6 +51,20 @@ export function buildAssetManifest(urls: string[]): Record<string, string> {
   return manifest;
 }
 
+function extensionForMime(mimeType: string): string {
+  if (mimeType.includes("mp4")) return ".mp4";
+  if (mimeType.includes("webm")) return ".webm";
+  if (mimeType.includes("png")) return ".png";
+  if (mimeType.includes("jpeg")) return ".jpg";
+  if (mimeType.includes("gif")) return ".gif";
+  if (mimeType.includes("webp")) return ".webp";
+  return ".bin";
+}
+
+export function blobAssetName(url: string, mimeType: string): string {
+  return `dm_media_${hashString(url)}${extensionForMime(mimeType)}`;
+}
+
 const FONT_PATTERN = /url\("(https:\/\/abs\.twimg\.com\/[^"]+\.woff2?)"\)/g;
 
 export function extractChirpFontUrls(css: string): string[] {

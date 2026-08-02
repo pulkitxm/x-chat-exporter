@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import {
+  blobAssetName,
   buildAssetManifest,
   extractAssetUrls,
   extractChirpFontUrls,
@@ -70,6 +71,22 @@ describe("extractChirpFontUrls", () => {
     const urls = extractChirpFontUrls(css);
     expect(urls).toHaveLength(1);
     expect(urls[0]).toContain("Chirp-Regular");
+  });
+});
+
+describe("blobAssetName", () => {
+  test("derives extension from the mime type", () => {
+    expect(blobAssetName("blob:https://x.com/aaa", "image/jpeg").endsWith(".jpg")).toBe(true);
+    expect(blobAssetName("blob:https://x.com/aaa", "video/mp4").endsWith(".mp4")).toBe(true);
+    expect(
+      blobAssetName("blob:https://x.com/aaa", "application/octet-stream").endsWith(".bin"),
+    ).toBe(true);
+  });
+
+  test("distinct urls get distinct names", () => {
+    expect(blobAssetName("blob:https://x.com/aaa", "image/jpeg")).not.toBe(
+      blobAssetName("blob:https://x.com/bbb", "image/jpeg"),
+    );
   });
 });
 

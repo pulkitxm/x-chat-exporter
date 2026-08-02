@@ -28,7 +28,7 @@ describe("buildPage", () => {
   const page = buildPage({
     capture: sampleCapture(),
     assetManifest: { "https://pbs.twimg.com/media/abc.jpg": "abc_1.jpg" },
-    blobFileNames: { "message-1": "dm_video_message-1.mp4" },
+    blobFileNames: { "blob:https://x.com/uuid": "dm_video_message-1.mp4" },
     fontFiles: ["Chirp-Regular.aa.woff2"],
   });
 

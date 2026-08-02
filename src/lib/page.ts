@@ -1,4 +1,4 @@
-import { replaceBlobSources, rewriteFontUrls, rewriteItemHtml } from "./rewrite";
+import { rewriteFontUrls, rewriteItemHtml } from "./rewrite";
 import type { Capture } from "./types";
 
 const DEFAULT_HTML_STYLE =
@@ -48,18 +48,11 @@ export function buildPage(inputs: PageInputs): string {
   const css = rewriteFontUrls(capture.css, fontFiles);
   const options = { assetManifest, blobFileNames };
 
-  const rewriteWithBlobs = (key: string, html: string): string => {
-    let out = rewriteItemHtml(html, options);
-    const blobFile = blobFileNames[key];
-    if (blobFile !== undefined) out = replaceBlobSources(out, key, blobFile);
-    return out;
-  };
-
   const itemsHtml = capture.order
     .map((key) => {
       const item = capture.items[key];
       if (item === undefined) return "";
-      return `<div class="w-full">${rewriteWithBlobs(key, item.html)}</div>`;
+      return `<div class="w-full">${rewriteItemHtml(item.html, options)}</div>`;
     })
     .join("\n");
 

@@ -8,6 +8,7 @@ const MAX_UP_ROUNDS = 600;
 const MAX_DOWN_ROUNDS = 600;
 const STAGNANT_ROUNDS_BEFORE_MANUAL = 6;
 const STAGNANT_ROUNDS_AT_END = 8;
+const MANUAL_STAGNANT_ROUNDS = 120;
 
 interface CaptureState {
   order: string[];
@@ -68,33 +69,32 @@ function captureTick(state: CaptureState): void {
 }
 
 function collectBlobMedia(state: CaptureState): void {
-  const videos = document.querySelectorAll<HTMLVideoElement>(
-    '[data-testid^="message-"] video[src^="blob:"]',
+  const media = document.querySelectorAll<HTMLImageElement | HTMLVideoElement>(
+    '[data-testid^="message-"] img[src^="blob:"], [data-testid^="message-"] video[src^="blob:"]',
   );
-  for (const video of videos) {
-    const message = video.closest('[data-testid^="message-"]');
-    const key = message?.getAttribute("data-testid");
-    if (key === null || key === undefined) continue;
-    if (state.blobMedia.has(key) || state.pendingBlobFetches.has(key)) continue;
-    state.pendingBlobFetches.add(key);
-    void fetchBlob(state, key, video.src);
+  for (const element of media) {
+    const url = element.src;
+    if (state.blobMedia.has(url) || state.pendingBlobFetches.has(url)) continue;
+    state.pendingBlobFetches.add(url);
+    const fallbackType = element instanceof HTMLVideoElement ? "video/mp4" : "image/jpeg";
+    void fetchBlob(state, url, fallbackType);
   }
 }
 
-async function fetchBlob(state: CaptureState, key: string, src: string): Promise<void> {
+async function fetchBlob(state: CaptureState, url: string, fallbackType: string): Promise<void> {
   try {
-    const response = await fetch(src);
+    const response = await fetch(url);
     const blob = await response.blob();
     const bytes = new Uint8Array(await blob.arrayBuffer());
-    state.blobMedia.set(key, {
-      messageKey: key,
-      mimeType: blob.type.length > 0 ? blob.type : "video/mp4",
+    state.blobMedia.set(url, {
+      url,
+      mimeType: blob.type.length > 0 ? blob.type : fallbackType,
       base64: bytesToBase64(bytes),
     });
   } catch {
     return;
   } finally {
-    state.pendingBlobFetches.delete(key);
+    state.pendingBlobFetches.delete(url);
   }
 }
 
@@ -123,11 +123,18 @@ function columnTop(): number | null {
   return column.getBoundingClientRect().top;
 }
 
-function tryScroll(deltaY: number): void {
+function dispatchKey(scroller: HTMLElement, key: string): void {
+  const options = { key, code: key, bubbles: true, cancelable: true };
+  scroller.dispatchEvent(new KeyboardEvent("keydown", options));
+  scroller.dispatchEvent(new KeyboardEvent("keyup", options));
+}
+
+function tryScroll(deltaY: number, useKeyboardFallback: boolean): void {
   const scroller = findScroller();
   if (scroller === null) return;
   scroller.scrollTop += deltaY;
   for (let i = 0; i < 4; i++) dispatchWheel(scroller, deltaY / 4);
+  if (useKeyboardFallback) dispatchKey(scroller, deltaY < 0 ? "PageUp" : "PageDown");
 }
 
 function startCardCaptured(state: CaptureState): boolean {
@@ -135,6 +142,14 @@ function startCardCaptured(state: CaptureState): boolean {
     if (item.text.includes("View Profile") && item.text.includes("Joined")) return true;
   }
   return false;
+}
+
+function atTop(): boolean {
+  const scroller = findScroller();
+  if (scroller === null) return false;
+  const column = findColumn(scroller);
+  if (column === null) return false;
+  return column.getBoundingClientRect().top >= scroller.getBoundingClientRect().top - 40;
 }
 
 function atBottom(): boolean {
@@ -247,7 +262,7 @@ class Session {
     let lastTop: number | null = null;
     let lastCount = -1;
     for (let round = 0; round < maxRounds; round++) {
-      tryScroll(delta);
+      tryScroll(delta, stagnantRounds >= 2);
       await sleep(SETTLE_MS);
       captureTick(this.state);
       const top = columnTop();
@@ -264,7 +279,8 @@ class Session {
       if (stagnantRounds >= STAGNANT_ROUNDS_BEFORE_MANUAL) this.state.manualHint = true;
       const finished =
         direction === "up"
-          ? startCardCaptured(this.state) && stagnantRounds >= 2
+          ? (startCardCaptured(this.state) && stagnantRounds >= 2) ||
+            (atTop() && stagnantRounds >= 4)
           : atBottom() && stagnantRounds >= 3;
       this.status({
         phase: direction === "up" ? "scrolling-up" : "hydrating",
@@ -273,7 +289,10 @@ class Session {
         manualHint: this.state.manualHint,
       });
       if (finished) return;
-      if (stagnantRounds >= STAGNANT_ROUNDS_AT_END + STAGNANT_ROUNDS_BEFORE_MANUAL) return;
+      const bailThreshold = this.state.manualHint
+        ? MANUAL_STAGNANT_ROUNDS
+        : STAGNANT_ROUNDS_AT_END + STAGNANT_ROUNDS_BEFORE_MANUAL;
+      if (stagnantRounds >= bailThreshold) return;
     }
   }
 

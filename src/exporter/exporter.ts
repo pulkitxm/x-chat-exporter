@@ -1,4 +1,5 @@
 import {
+  blobAssetName,
   buildAssetManifest,
   extractAssetUrls,
   extractChirpFontUrls,
@@ -66,15 +67,6 @@ class Ui {
   }
 }
 
-function extensionForMime(mimeType: string): string {
-  if (mimeType.includes("mp4")) return ".mp4";
-  if (mimeType.includes("webm")) return ".webm";
-  if (mimeType.includes("png")) return ".png";
-  if (mimeType.includes("jpeg")) return ".jpg";
-  if (mimeType.includes("gif")) return ".gif";
-  return ".bin";
-}
-
 function injectAndConnect(tabId: number): Promise<chrome.runtime.Port> {
   return chrome.scripting
     .executeScript({ target: { tabId }, files: ["content.js"] })
@@ -131,7 +123,7 @@ function runCapture(port: chrome.runtime.Port, ui: Ui): Promise<Capture> {
 
 async function fetchBinary(url: string): Promise<Uint8Array | null> {
   try {
-    const response = await fetch(url);
+    const response = await fetch(url, { credentials: "include" });
     if (!response.ok) return null;
     return new Uint8Array(await response.arrayBuffer());
   } catch {
@@ -200,9 +192,8 @@ function blobEntries(capture: Capture): { entries: ZipEntry[]; names: Record<str
   const entries: ZipEntry[] = [];
   const names: Record<string, string> = {};
   for (const media of capture.blobMedia) {
-    const safeKey = media.messageKey.replace(/[^\w-]/g, "_").slice(0, 60);
-    const name = `dm_media_${safeKey}${extensionForMime(media.mimeType)}`;
-    names[media.messageKey] = name;
+    const name = blobAssetName(media.url, media.mimeType);
+    names[media.url] = name;
     entries.push({ name: `assets/${name}`, data: base64ToBytes(media.base64) });
   }
   return { entries, names };

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { replaceBlobSources, rewriteFontUrls, rewriteItemHtml } from "../src/lib/rewrite";
+import { rewriteFontUrls, rewriteItemHtml } from "../src/lib/rewrite";
 
 const options = {
   assetManifest: {
@@ -43,12 +43,27 @@ describe("rewriteItemHtml", () => {
   });
 });
 
-describe("replaceBlobSources", () => {
-  test("replaces blob sources only inside the matching message", () => {
-    const html = '<div data-testid="message-1"><video src="blob:https://x.com/uuid"></video></div>';
-    const out = replaceBlobSources(html, "message-1", "dm_video_message-1.mp4");
-    expect(out).toContain('src="assets/dm_video_message-1.mp4"');
-    expect(replaceBlobSources(html, "message-2", "x.mp4")).toBe(html);
+describe("blob source rewriting", () => {
+  test("maps each captured blob url to its own local file", () => {
+    const html =
+      '<div data-testid="message-1"><img src="blob:https://x.com/aaa"><img src="blob:https://x.com/bbb"></div>';
+    const out = rewriteItemHtml(html, {
+      assetManifest: {},
+      blobFileNames: {
+        "blob:https://x.com/aaa": "dm_media_1.jpg",
+        "blob:https://x.com/bbb": "dm_media_2.jpg",
+      },
+    });
+    expect(out).toContain('src="assets/dm_media_1.jpg"');
+    expect(out).toContain('src="assets/dm_media_2.jpg"');
+    expect(out).not.toContain("blob:");
+  });
+
+  test("replaces uncaptured blob sources with a placeholder", () => {
+    const html = '<img src="blob:https://x.com/gone">';
+    const out = rewriteItemHtml(html, { assetManifest: {}, blobFileNames: {} });
+    expect(out).not.toContain("blob:");
+    expect(out).toContain("data:image/svg+xml");
   });
 });
 

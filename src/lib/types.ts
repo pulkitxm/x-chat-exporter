@@ -4,7 +4,7 @@ export interface CapturedItem {
 }
 
 export interface BlobMedia {
-  messageKey: string;
+  url: string;
   mimeType: string;
   base64: string;
 }
