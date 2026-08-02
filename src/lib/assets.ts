@@ -39,7 +39,7 @@ export function localAssetName(url: string): string {
   const base = parsed.pathname.split("/").pop() ?? "asset";
   const dotIndex = base.lastIndexOf(".");
   const format = parsed.searchParams.get("format");
-  const ext = dotIndex > 0 ? base.slice(dotIndex) : format !== null ? `.${format}` : "";
+  const ext = dotIndex > 0 ? base.slice(dotIndex) : format === null ? "" : `.${format}`;
   const stem = dotIndex > 0 ? base.slice(0, dotIndex) : base;
   const safeStem = stem.replace(/[^\w.-]/g, "_").slice(0, 60);
   return `${safeStem}_${hashString(url)}${ext}`;

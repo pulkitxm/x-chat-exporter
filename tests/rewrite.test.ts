@@ -32,9 +32,7 @@ describe("rewriteItemHtml", () => {
 
   test("absolutizes relative profile links and opens them in a new tab", () => {
     const out = rewriteItemHtml('<a href="/someuser">user</a>', options);
-    expect(out).toBe(
-      '<a target="_blank" rel="noopener" href="https://x.com/someuser">user</a>',
-    );
+    expect(out).toBe('<a target="_blank" rel="noopener" href="https://x.com/someuser">user</a>');
   });
 
   test("converts nested card anchors before adding targets", () => {
@@ -47,8 +45,7 @@ describe("rewriteItemHtml", () => {
 
 describe("replaceBlobSources", () => {
   test("replaces blob sources only inside the matching message", () => {
-    const html =
-      '<div data-testid="message-1"><video src="blob:https://x.com/uuid"></video></div>';
+    const html = '<div data-testid="message-1"><video src="blob:https://x.com/uuid"></video></div>';
     const out = replaceBlobSources(html, "message-1", "dm_video_message-1.mp4");
     expect(out).toContain('src="assets/dm_video_message-1.mp4"');
     expect(replaceBlobSources(html, "message-2", "x.mp4")).toBe(html);

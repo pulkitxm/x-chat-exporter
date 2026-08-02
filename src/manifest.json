@@ -1,0 +1,26 @@
+{
+  "manifest_version": 3,
+  "name": "X Chat Exporter",
+  "version": "0.1.0",
+  "description": "Export an X chat conversation to a standalone offline HTML page with all media",
+  "minimum_chrome_version": "116",
+  "action": {
+    "default_title": "Export this X chat"
+  },
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "permissions": ["scripting", "downloads"],
+  "host_permissions": [
+    "https://x.com/*",
+    "https://pbs.twimg.com/*",
+    "https://video.twimg.com/*",
+    "https://abs.twimg.com/*"
+  ],
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  }
+}

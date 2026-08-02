@@ -8,7 +8,8 @@ describe("fixNestedAnchors", () => {
   });
 
   test("converts an anchor that wraps another anchor into a span", () => {
-    const html = '<a class="card" href="https://x.com/status/1"><a href="https://x.com/u">u</a></a>';
+    const html =
+      '<a class="card" href="https://x.com/status/1"><a href="https://x.com/u">u</a></a>';
     const out = fixNestedAnchors(html);
     expect(out).toBe(
       '<span data-card-link="1" class="card" data-href="https://x.com/status/1"><a href="https://x.com/u">u</a></span>',
@@ -16,7 +17,8 @@ describe("fixNestedAnchors", () => {
   });
 
   test("handles double nesting by converting every wrapping anchor", () => {
-    const html = '<a href="https://x.com/1"><a href="https://x.com/2"><a href="https://x.com/3">x</a></a></a>';
+    const html =
+      '<a href="https://x.com/1"><a href="https://x.com/2"><a href="https://x.com/3">x</a></a></a>';
     const out = fixNestedAnchors(html);
     expect(out.match(/data-card-link/g)?.length).toBe(2);
     expect(out.match(/<a /g)?.length).toBe(1);

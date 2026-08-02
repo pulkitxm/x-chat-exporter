@@ -8,7 +8,7 @@
   },
   "files": {
     "ignoreUnknown": true,
-    "ignore": ["dist", "node_modules"]
+    "includes": ["**", "!dist", "!node_modules"]
   },
   "formatter": {
     "enabled": true,
@@ -16,14 +16,19 @@
     "indentWidth": 2,
     "lineWidth": 100
   },
-  "organizeImports": {
-    "enabled": true
+  "assist": {
+    "actions": {
+      "source": {
+        "organizeImports": "on"
+      }
+    }
   },
   "linter": {
     "enabled": true,
     "rules": {
-      "recommended": true,
+      "preset": "recommended",
       "complexity": {
+        "preset": "recommended",
         "noForEach": "error",
         "noUselessStringConcat": "error",
         "noUselessUndefinedInitialization": "error",
@@ -38,11 +43,13 @@
         }
       },
       "correctness": {
+        "preset": "recommended",
         "noUnusedVariables": "error",
         "noUnusedImports": "error",
         "noUnusedFunctionParameters": "error"
       },
       "style": {
+        "preset": "recommended",
         "noNegationElse": "error",
         "useCollapsedElseIf": "error",
         "useConst": "error",
@@ -50,6 +57,7 @@
         "noParameterAssign": "error"
       },
       "suspicious": {
+        "preset": "recommended",
         "noConsole": {
           "level": "error",
           "options": {
