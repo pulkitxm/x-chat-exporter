@@ -7,7 +7,7 @@ const CHUNK_SIZE = 4 * 1024 * 1024;
 const SETTLE_MS = 750;
 const MAX_UP_ROUNDS = 600;
 const MAX_DOWN_ROUNDS = 600;
-const STAGNANT_ROUNDS_BEFORE_MANUAL = 6;
+const STAGNANT_ROUNDS_BEFORE_MANUAL = 10;
 const MANUAL_STAGNANT_ROUNDS = 120;
 
 interface CaptureState {
@@ -132,8 +132,10 @@ function dispatchKey(scroller: HTMLElement, key: string): void {
 function tryScroll(
   deltaY: number,
   useKeyboardFallback: boolean,
+  manualMode: boolean,
   requestTrustedScroll: (x: number, y: number, deltaY: number) => void,
 ): void {
+  if (manualMode) return;
   const scroller = findScroller();
   if (scroller === null) return;
   const rect = scroller.getBoundingClientRect();
@@ -272,7 +274,7 @@ class Session {
     let lastTop: number | null = null;
     let lastCount = -1;
     for (let round = 0; round < maxRounds; round++) {
-      tryScroll(delta, stagnantRounds >= 2, (x, y, deltaY) =>
+      tryScroll(delta, stagnantRounds >= 2, this.state.manualHint, (x, y, deltaY) =>
         this.post({ kind: "scroll-request", x, y, deltaY }),
       );
       await sleep(SETTLE_MS);
