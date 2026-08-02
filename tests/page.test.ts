@@ -7,6 +7,7 @@ function sampleCapture(): Capture {
     url: "https://x.com/i/chat/1-2",
     conversationId: "1-2",
     title: "Ayush",
+    reachedStart: true,
     headerHtml: '<div data-testid="dm-conversation-header">Ayush</div>',
     composerHtml: "",
     htmlStyleAttr: "",

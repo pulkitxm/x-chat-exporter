@@ -16,5 +16,6 @@ chrome.action.onClicked.addListener((tab) => {
   void chrome.tabs.create({
     url: `${chrome.runtime.getURL("exporter.html")}?tabId=${tab.id}`,
     index: tab.index + 1,
+    active: false,
   });
 });

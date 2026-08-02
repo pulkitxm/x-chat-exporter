@@ -342,6 +342,7 @@ class Session {
       url: location.href,
       conversationId,
       title: header?.textContent?.trim().slice(0, 80) ?? "X chat",
+      reachedStart: startCardCaptured(this.state),
       headerHtml: header?.outerHTML ?? "",
       composerHtml: composer?.outerHTML ?? "",
       htmlStyleAttr: document.documentElement.getAttribute("style") ?? "",

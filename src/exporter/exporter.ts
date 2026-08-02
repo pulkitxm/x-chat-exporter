@@ -112,6 +112,15 @@ class TrustedScroller {
   }
 }
 
+async function focusSelf(): Promise<void> {
+  try {
+    const self = await chrome.tabs.getCurrent();
+    if (self?.id !== undefined) await chrome.tabs.update(self.id, { active: true });
+  } catch {
+    return;
+  }
+}
+
 function injectAndConnect(tabId: number): Promise<chrome.runtime.Port> {
   return chrome.scripting
     .executeScript({ target: { tabId }, files: ["content.js"] })
@@ -289,8 +298,17 @@ async function run(): Promise<void> {
     ui.progress(0.1);
     const capture = await runCapture(port, ui, trustedScroller);
     await trustedScroller.detach();
-    ui.setState("capture", "done", `${capture.order.length} items`);
-    ui.setNote("");
+    await focusSelf();
+    ui.setState(
+      "capture",
+      capture.reachedStart ? "done" : "error",
+      `${capture.order.length} items`,
+    );
+    ui.setNote(
+      capture.reachedStart
+        ? ""
+        : "Warning: capture never reached the start of this conversation, so the export is partial. Scroll the chat to its very beginning and run the export again.",
+    );
     ui.progress(0.3);
 
     ui.setState("assets", "active");
@@ -322,9 +340,14 @@ async function run(): Promise<void> {
     await chrome.downloads.download({ url: blobUrl, filename });
     ui.setState("download", "done", filename);
     ui.progress(1);
-    ui.setNote("Unzip the archive and open index.html. The page works fully offline.");
+    ui.setNote(
+      capture.reachedStart
+        ? "Unzip the archive and open index.html. The page works fully offline."
+        : "Saved, but this export is partial: capture never reached the start of the conversation.",
+    );
   } catch (error) {
     await trustedScroller.detach();
+    await focusSelf();
     const message = error instanceof Error ? error.message : String(error);
     const active = document.querySelector(".step.active");
     if (active !== null) active.className = "step error";

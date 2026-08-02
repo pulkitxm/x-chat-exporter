@@ -13,6 +13,7 @@ export interface Capture {
   url: string;
   conversationId: string;
   title: string;
+  reachedStart: boolean;
   headerHtml: string;
   composerHtml: string;
   htmlStyleAttr: string;

@@ -21,10 +21,10 @@ Then load it in any Chromium browser (Chrome, Dia, Edge, Brave):
 
 1. Open a conversation at `x.com/i/chat/...`
 2. Click the extension icon
-3. A progress tab opens while the chat tab scrolls itself through the full history
+3. Stay on the chat tab and watch it scroll itself through the full history; a progress tab opens quietly in the background and comes to the front when the capture is done
 4. When it finishes, a zip downloads: unzip it and open `index.html`
 
-The extension drives the chat with real browser-level scroll events (via the `debugger` permission, which is why the browser shows a "started debugging this browser" banner while it runs; nothing is uploaded anywhere). If that is unavailable, the overlay asks you to scroll through the conversation yourself and keeps recording everything you pass. Capture only finishes when it reaches the start of the conversation, so a stalled export waits for you rather than saving a partial one.
+The extension drives the chat with real browser-level scroll events (via the `debugger` permission, which is why the browser shows a "started debugging this browser" banner while it runs; nothing is uploaded anywhere). If that is unavailable, the overlay asks you to scroll through the conversation yourself and keeps recording everything you pass. Capture only finishes when it reaches the start of the conversation, so a stalled export waits for you rather than saving a partial one, and if it still ends up short it says so instead of pretending the export is complete.
 
 ## How it works
 
