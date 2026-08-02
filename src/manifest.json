@@ -11,7 +11,7 @@
     "service_worker": "background.js",
     "type": "module"
   },
-  "permissions": ["scripting", "downloads"],
+  "permissions": ["scripting", "downloads", "debugger"],
   "host_permissions": [
     "https://x.com/*",
     "https://pbs.twimg.com/*",

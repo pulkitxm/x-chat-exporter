@@ -38,4 +38,5 @@ export type CaptureStatus =
 export type ContentMessage =
   | { kind: "status"; status: CaptureStatus }
   | { kind: "capture-chunk"; index: number; total: number; payload: string }
+  | { kind: "scroll-request"; x: number; y: number; deltaY: number }
   | { kind: "error"; message: string };

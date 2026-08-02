@@ -67,20 +67,74 @@ class Ui {
   }
 }
 
+class TrustedScroller {
+  private attached = false;
+
+  constructor(private tabId: number) {}
+
+  async attach(): Promise<void> {
+    try {
+      await chrome.debugger.attach({ tabId: this.tabId }, "1.3");
+      this.attached = true;
+    } catch {
+      this.attached = false;
+    }
+  }
+
+  get isAttached(): boolean {
+    return this.attached;
+  }
+
+  scroll(x: number, y: number, deltaY: number): void {
+    if (!this.attached) return;
+    void chrome.debugger
+      .sendCommand({ tabId: this.tabId }, "Input.dispatchMouseEvent", {
+        type: "mouseWheel",
+        x,
+        y,
+        deltaX: 0,
+        deltaY,
+        pointerType: "mouse",
+      })
+      .catch(() => {
+        this.attached = false;
+      });
+  }
+
+  async detach(): Promise<void> {
+    if (!this.attached) return;
+    this.attached = false;
+    try {
+      await chrome.debugger.detach({ tabId: this.tabId });
+    } catch {
+      return;
+    }
+  }
+}
+
 function injectAndConnect(tabId: number): Promise<chrome.runtime.Port> {
   return chrome.scripting
     .executeScript({ target: { tabId }, files: ["content.js"] })
     .then(() => chrome.tabs.connect(tabId, { name: "x-chat-exporter" }));
 }
 
-function showCaptureStatus(ui: Ui, message: Extract<ContentMessage, { kind: "status" }>): void {
+function showCaptureStatus(
+  ui: Ui,
+  message: Extract<ContentMessage, { kind: "status" }>,
+  trustedScrollAvailable: boolean,
+): void {
   const status = message.status;
   if (status.phase !== "scrolling-up" && status.phase !== "hydrating") return;
-  ui.setState("capture", "active", `${status.itemCount} items`);
+  const direction = status.phase === "scrolling-up" ? "reading history" : "loading media";
+  ui.setState("capture", "active", `${status.itemCount} items, ${direction}`);
+  if (!status.manualHint) {
+    ui.setNote("");
+    return;
+  }
   ui.setNote(
-    status.manualHint
-      ? "Auto-scroll seems blocked. Switch to the chat tab and scroll through the conversation manually; capture continues while you scroll."
-      : "",
+    trustedScrollAvailable
+      ? "Scrolling has stalled. Switch to the chat tab and scroll through the conversation yourself; capture keeps recording while you scroll."
+      : "Auto-scroll is unavailable in this browser. Switch to the chat tab and scroll to the very start of the conversation, then back down; capture keeps recording while you scroll.",
   );
 }
 
@@ -96,22 +150,34 @@ function collectChunk(
   return JSON.parse(chunks.join("")) as Capture;
 }
 
-function runCapture(port: chrome.runtime.Port, ui: Ui): Promise<Capture> {
+function runCapture(
+  port: chrome.runtime.Port,
+  ui: Ui,
+  scroller: TrustedScroller,
+): Promise<Capture> {
   return new Promise((resolve, reject) => {
     const chunks: string[] = [];
-    port.onMessage.addListener((raw) => {
-      const message = raw as ContentMessage;
+    const handle = (message: ContentMessage): void => {
       if (message.kind === "error") {
         reject(new Error(message.message));
-      } else if (message.kind === "status") {
-        showCaptureStatus(ui, message);
-      } else {
-        try {
-          const capture = collectChunk(chunks, message, ui);
-          if (capture !== null) resolve(capture);
-        } catch (error) {
-          reject(error instanceof Error ? error : new Error(String(error)));
-        }
+        return;
+      }
+      if (message.kind === "status") {
+        showCaptureStatus(ui, message, scroller.isAttached);
+        return;
+      }
+      if (message.kind === "scroll-request") {
+        scroller.scroll(message.x, message.y, message.deltaY);
+        return;
+      }
+      const capture = collectChunk(chunks, message, ui);
+      if (capture !== null) resolve(capture);
+    };
+    port.onMessage.addListener((raw) => {
+      try {
+        handle(raw as ContentMessage);
+      } catch (error) {
+        reject(error instanceof Error ? error : new Error(String(error)));
       }
     });
     port.onDisconnect.addListener(() => {
@@ -208,14 +274,21 @@ async function run(): Promise<void> {
     ui.setNote("Open an X chat tab and click the extension icon there.");
     return;
   }
+  const trustedScroller = new TrustedScroller(tabId);
   try {
     ui.setState("connect", "active");
     ui.progress(0.05);
     const port = await injectAndConnect(tabId);
-    ui.setState("connect", "done");
+    await trustedScroller.attach();
+    ui.setState(
+      "connect",
+      "done",
+      trustedScroller.isAttached ? "auto-scroll ready" : "manual mode",
+    );
     ui.setState("capture", "active");
     ui.progress(0.1);
-    const capture = await runCapture(port, ui);
+    const capture = await runCapture(port, ui, trustedScroller);
+    await trustedScroller.detach();
     ui.setState("capture", "done", `${capture.order.length} items`);
     ui.setNote("");
     ui.progress(0.3);
@@ -251,6 +324,7 @@ async function run(): Promise<void> {
     ui.progress(1);
     ui.setNote("Unzip the archive and open index.html. The page works fully offline.");
   } catch (error) {
+    await trustedScroller.detach();
     const message = error instanceof Error ? error.message : String(error);
     const active = document.querySelector(".step.active");
     if (active !== null) active.className = "step error";

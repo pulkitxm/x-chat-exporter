@@ -7,7 +7,6 @@ const SETTLE_MS = 750;
 const MAX_UP_ROUNDS = 600;
 const MAX_DOWN_ROUNDS = 600;
 const STAGNANT_ROUNDS_BEFORE_MANUAL = 6;
-const STAGNANT_ROUNDS_AT_END = 8;
 const MANUAL_STAGNANT_ROUNDS = 120;
 
 interface CaptureState {
@@ -129,9 +128,19 @@ function dispatchKey(scroller: HTMLElement, key: string): void {
   scroller.dispatchEvent(new KeyboardEvent("keyup", options));
 }
 
-function tryScroll(deltaY: number, useKeyboardFallback: boolean): void {
+function tryScroll(
+  deltaY: number,
+  useKeyboardFallback: boolean,
+  requestTrustedScroll: (x: number, y: number, deltaY: number) => void,
+): void {
   const scroller = findScroller();
   if (scroller === null) return;
+  const rect = scroller.getBoundingClientRect();
+  requestTrustedScroll(
+    Math.round(rect.left + rect.width / 2),
+    Math.round(rect.top + rect.height / 2),
+    deltaY,
+  );
   scroller.scrollTop += deltaY;
   for (let i = 0; i < 4; i++) dispatchWheel(scroller, deltaY / 4);
   if (useKeyboardFallback) dispatchKey(scroller, deltaY < 0 ? "PageUp" : "PageDown");
@@ -186,11 +195,11 @@ function overlayText(status: CaptureStatus): string {
       return "Export starting";
     case "scrolling-up":
       return status.manualHint
-        ? `Auto-scroll is blocked. Please scroll UP until the start of the conversation (${status.itemCount} items captured)`
+        ? `Scroll UP to the very start of this conversation. Capturing as you go: ${status.itemCount} items`
         : `Capturing history: ${status.itemCount} items`;
     case "hydrating":
       return status.manualHint
-        ? `Please scroll DOWN slowly to the end of the conversation (${status.itemCount} items captured)`
+        ? `Now scroll DOWN slowly to the newest message: ${status.itemCount} items`
         : `Loading media: ${status.itemCount} items`;
     case "collecting-media":
       return `Saving in-chat media: ${status.pending} pending`;
@@ -262,7 +271,9 @@ class Session {
     let lastTop: number | null = null;
     let lastCount = -1;
     for (let round = 0; round < maxRounds; round++) {
-      tryScroll(delta, stagnantRounds >= 2);
+      tryScroll(delta, stagnantRounds >= 2, (x, y, deltaY) =>
+        this.post({ kind: "scroll-request", x, y, deltaY }),
+      );
       await sleep(SETTLE_MS);
       captureTick(this.state);
       const top = columnTop();
@@ -289,10 +300,7 @@ class Session {
         manualHint: this.state.manualHint,
       });
       if (finished) return;
-      const bailThreshold = this.state.manualHint
-        ? MANUAL_STAGNANT_ROUNDS
-        : STAGNANT_ROUNDS_AT_END + STAGNANT_ROUNDS_BEFORE_MANUAL;
-      if (stagnantRounds >= bailThreshold) return;
+      if (stagnantRounds >= MANUAL_STAGNANT_ROUNDS) return;
     }
   }
 

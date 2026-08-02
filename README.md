@@ -24,12 +24,12 @@ Then load it in any Chromium browser (Chrome, Dia, Edge, Brave):
 3. A progress tab opens while the chat tab scrolls itself through the full history
 4. When it finishes, a zip downloads: unzip it and open `index.html`
 
-If the page blocks synthetic scrolling, the overlay asks you to scroll through the conversation manually; the capture keeps recording while you do.
+The extension drives the chat with real browser-level scroll events (via the `debugger` permission, which is why the browser shows a "started debugging this browser" banner while it runs; nothing is uploaded anywhere). If that is unavailable, the overlay asks you to scroll through the conversation yourself and keeps recording everything you pass. Capture only finishes when it reaches the start of the conversation, so a stalled export waits for you rather than saving a partial one.
 
 ## How it works
 
 - A content script walks X's virtualized message list with a `MutationObserver`, merging each mounted window of messages into a stable global order
-- Blob-backed videos from encrypted chats are read in-page and streamed out as base64
+- Blob-backed media from encrypted chats (both images and videos) is read in-page and streamed out as base64, keyed per blob url so multi-attachment messages survive
 - The exporter page fetches all CDN media and Chirp fonts, rewrites the captured markup to local paths, repairs X's nested-anchor card links (invalid HTML that breaks on re-parse), and packs everything into a store-only zip built from scratch
 
 ## Development
