@@ -60,4 +60,16 @@ describe("buildPage", () => {
   test("falls back to the default html style attribute", () => {
     expect(page).toContain("color-scheme: dark");
   });
+
+  test("ships a lightbox that opens media and closes on escape", () => {
+    expect(page).toContain("xc-lightbox");
+    expect(page).toContain("xc-lightbox-stage");
+    expect(page).toContain("'Escape'");
+    expect(page).toContain("MIN_ZOOMABLE_WIDTH");
+  });
+
+  test("never emits a raw closing script tag inside the inline script", () => {
+    const scriptBody = page.slice(page.indexOf("<script>") + 8, page.lastIndexOf("</script>"));
+    expect(scriptBody).not.toContain("</script>");
+  });
 });

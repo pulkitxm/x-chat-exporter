@@ -6,6 +6,7 @@ import {
   fontFileName,
 } from "../lib/assets";
 import { base64ToBytes } from "../lib/base64";
+import { conversationSlug } from "../lib/naming";
 import { buildPage } from "../lib/page";
 import type { Capture, ContentMessage, ZipEntry } from "../lib/types";
 import { buildZip } from "../lib/zip";
@@ -324,11 +325,14 @@ async function run(): Promise<void> {
       blobFileNames: media.names,
       fontFiles: fetched.fontFiles,
     });
-    const zip = buildZip([
-      { name: "index.html", data: new TextEncoder().encode(page) },
-      ...fetched.entries,
-      ...media.entries,
-    ]);
+    const folder = conversationSlug(capture.title, capture.conversationId);
+    const zip = buildZip(
+      [
+        { name: "index.html", data: new TextEncoder().encode(page) },
+        ...fetched.entries,
+        ...media.entries,
+      ].map((entry) => ({ ...entry, name: `${folder}/${entry.name}` })),
+    );
     ui.setState("build", "done", `${(zip.length / 1024 / 1024).toFixed(1)} MB`);
     ui.progress(0.95);
 
@@ -336,7 +340,7 @@ async function run(): Promise<void> {
     const blobUrl = URL.createObjectURL(
       new Blob([zip.buffer as ArrayBuffer], { type: "application/zip" }),
     );
-    const filename = `x-chat-${capture.conversationId}.zip`;
+    const filename = `${folder}.zip`;
     await chrome.downloads.download({ url: blobUrl, filename });
     ui.setState("download", "done", filename);
     ui.progress(1);

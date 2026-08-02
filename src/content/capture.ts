@@ -1,5 +1,6 @@
 import { bytesToBase64 } from "../lib/base64";
 import { mergeWindow } from "../lib/merge";
+import { cleanConversationName } from "../lib/naming";
 import type { BlobMedia, Capture, CapturedItem, CaptureStatus, ContentMessage } from "../lib/types";
 
 const CHUNK_SIZE = 4 * 1024 * 1024;
@@ -335,13 +336,14 @@ class Session {
     const items: Record<string, CapturedItem> = {};
     for (const [key, value] of this.state.items) items[key] = value;
     const header = document.querySelector('[data-testid="dm-conversation-header"]');
+    const username = document.querySelector('[data-testid="dm-conversation-username"]');
     const composer = document.querySelector('[data-testid="dm-composer-container"]');
     const themed = document.querySelector("[data-theme]");
     const conversationId = location.pathname.split("/").pop() ?? "conversation";
     return {
       url: location.href,
       conversationId,
-      title: header?.textContent?.trim().slice(0, 80) ?? "X chat",
+      title: cleanConversationName(username?.textContent ?? header?.textContent ?? "").slice(0, 80),
       reachedStart: startCardCaptured(this.state),
       headerHtml: header?.outerHTML ?? "",
       composerHtml: composer?.outerHTML ?? "",
